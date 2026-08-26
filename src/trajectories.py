@@ -9,11 +9,15 @@ import numpy as np
 
 AREA_SIZE = 100.0
 DEPOT = np.array([AREA_SIZE / 2, AREA_SIZE / 2])
+# T_HORIZON is only the trajectory-REPRESENTATION horizon used to sample the
+# feature grid for clustering (see feature_matrix below). It is NOT a
+# deadline for UAV interception/routing, which is unbounded in time as long
+# as V_UAV > target speed (see src/routing.py and docs/experiment_design.md).
 T_HORIZON = 20.0
 L_GRID = 6
 V_TARGET_MIN = 1.0
 V_TARGET_MAX = 3.0
-V_UAV = 8.0  # > V_TARGET_MAX; combined with T_HORIZON, keeps the domain reachable
+V_UAV = 8.0  # > V_TARGET_MAX so every target is eventually interceptable
 
 SCENARIO_TYPES = (
     "random_random",
@@ -37,11 +41,10 @@ def _random_positions(rng, m, area=AREA_SIZE):
     return rng.uniform(0, area, size=(m, 2))
 
 
-def _clustered_positions(rng, m, k, area=AREA_SIZE, spread=None):
+def _clustered_positions(rng, m, k, assign, area=AREA_SIZE, spread=None):
     if spread is None:
         spread = area * 0.06
     centers = rng.uniform(area * 0.15, area * 0.85, size=(k, 2))
-    assign = rng.integers(0, k, size=m)
     pos = centers[assign] + rng.normal(0, spread, size=(m, 2))
     return np.clip(pos, 0, area)
 
@@ -52,9 +55,8 @@ def _random_velocities(rng, m, vmin=V_TARGET_MIN, vmax=V_TARGET_MAX):
     return np.stack([speeds * np.cos(angles), speeds * np.sin(angles)], axis=1)
 
 
-def _clustered_velocities(rng, m, k, vmin=V_TARGET_MIN, vmax=V_TARGET_MAX, angle_noise=0.25):
+def _clustered_velocities(rng, m, k, assign, vmin=V_TARGET_MIN, vmax=V_TARGET_MAX, angle_noise=0.25):
     headings = rng.uniform(0, 2 * np.pi, size=k)
-    assign = rng.integers(0, k, size=m)
     angles = headings[assign] + rng.normal(0, angle_noise, size=m)
     speeds = rng.uniform(vmin, vmax, size=m)
     return np.stack([speeds * np.cos(angles), speeds * np.sin(angles)], axis=1)
@@ -83,14 +85,18 @@ def generate_scenario(scenario_type, M, K, seed, outlier_rate=0.0):
         pos = _random_positions(rng, M)
         vel = _random_velocities(rng, M)
     elif scenario_type == "clustered_position":
-        pos = _clustered_positions(rng, M, K)
+        pos = _clustered_positions(rng, M, K, rng.integers(0, K, size=M))
         vel = _random_velocities(rng, M)
     elif scenario_type == "clustered_direction":
         pos = _random_positions(rng, M)
-        vel = _clustered_velocities(rng, M, K)
-    else:  # clustered_position_direction
-        pos = _clustered_positions(rng, M, K)
-        vel = _clustered_velocities(rng, M, K)
+        vel = _clustered_velocities(rng, M, K, rng.integers(0, K, size=M))
+    else:  # clustered_position_direction: ONE latent cluster label c_i in {1..K}
+        # drives both the position cluster and the direction cluster, so a
+        # target's position-cluster and direction-cluster always coincide
+        # (no independent K^2 position x direction combinations).
+        assign = rng.integers(0, K, size=M)
+        pos = _clustered_positions(rng, M, K, assign)
+        vel = _clustered_velocities(rng, M, K, assign)
 
     if outlier_rate > 0:
         pos, _ = _inject_outliers(rng, pos, outlier_rate)

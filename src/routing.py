@@ -7,9 +7,18 @@ repository) and is applied identically after every clustering method.
 import numpy as np
 
 
-def intercept_time(uav_pos, uav_time, target_pos0, target_vel, uav_speed, t_horizon):
+def intercept_time(uav_pos, uav_time, target_pos0, target_vel, uav_speed, t_horizon=None):
     """Earliest t* >= uav_time with |target_pos0 + target_vel*t* - uav_pos| =
-    uav_speed*(t* - uav_time), t* <= t_horizon. Returns (t_star, position, feasible)."""
+    uav_speed*(t* - uav_time). Returns (t_star, position, feasible).
+
+    t_horizon is an OPTIONAL cutoff (None = unbounded). Routing/interception
+    is not bounded by the clustering representation horizon: if
+    uav_speed > |target_vel|, the interception quadratic below is a downward
+    parabola in s = t*-uav_time (leading coefficient a = v.v - uav_speed^2 < 0)
+    that starts at c = d0.d0 >= 0 when s=0 and -> -inf as s -> inf, so a
+    non-negative root always exists and interception always eventually
+    succeeds (see docs/experiment_design.md and tests/test_routing.py).
+    """
     d0 = target_pos0 + target_vel * uav_time - uav_pos
     v = target_vel
     a = v @ v - uav_speed ** 2
@@ -32,14 +41,18 @@ def intercept_time(uav_pos, uav_time, target_pos0, target_vel, uav_speed, t_hori
     s = min(feasible_s)
     s = max(s, 0.0)
     t_star = uav_time + s
-    if t_star > t_horizon + 1e-9:
+    if t_horizon is not None and t_star > t_horizon + 1e-9:
         return None, None, False
     pos = target_pos0 + target_vel * t_star
     return t_star, pos, True
 
 
-def route_cluster(member_indices, targets, uav_speed, depot, t_horizon):
+def route_cluster(member_indices, targets, uav_speed, depot, t_horizon=None):
     """Greedy nearest-interception-time routing for one UAV/cluster.
+
+    t_horizon is unbounded (None) by default: the UAV keeps flying until
+    every assigned target is intercepted, it is not stopped merely because
+    the clustering representation horizon has passed.
 
     Returns dict with route_time, route_length, n_intercepted, n_unreached,
     order (list of target indices in visiting order).
@@ -60,7 +73,7 @@ def route_cluster(member_indices, targets, uav_speed, depot, t_horizon):
             if feasible and (best is None or t_star < best[0]):
                 best = (t_star, pos, idx)
         if best is None:
-            break  # no remaining target is reachable within the horizon
+            break  # no remaining target is reachable (only possible if t_horizon caps it)
         t_star, pos, idx = best
         route_length += float(np.linalg.norm(pos - pos_cur))
         pos_cur, t_cur = pos, t_star
@@ -76,7 +89,7 @@ def route_cluster(member_indices, targets, uav_speed, depot, t_horizon):
     }
 
 
-def route_all_clusters(labels, K, targets, uav_speed, depot, t_horizon):
+def route_all_clusters(labels, K, targets, uav_speed, depot, t_horizon=None):
     """Route one UAV per cluster k=0..K-1. Returns list of per-cluster route dicts."""
     routes = []
     for k in range(K):
