@@ -1,19 +1,20 @@
-# UAV Routing for Interception of Moving Targets: K-means++ vs. K-means vs. K-medoids
+# UAV Routing for Interception of Moving Targets: K-means++ vs. K-medoids
 
 ## Research question
 
-Does K-means++ initialization improve the decomposition and final UAV routing
-quality compared with standard K-means (random initialization) and K-medoids,
-when used as the target-clustering stage of a two-level UAV routing algorithm
-for moving-target interception? The comparison is made on the downstream
-mission-level routing metric, not on internal clustering objectives.
+How does K-means with K-means++ initialization compare with K-medoids when
+trajectory clustering is used as the decomposition stage of UAV routing for
+interception of moving targets? The comparison is made on downstream
+mission-level routing outcomes (interception completeness, route time, route
+length, runtime), not on internal clustering objectives, which are not
+directly comparable between the two methods.
 
-This project studies the effect of K-means++ initialization on trajectory
-clustering within a two-level UAV routing algorithm for moving targets and
-compares its downstream routing performance, robustness, and computational
-cost with standard K-means and K-medoids. **K-means++ is established prior
-work**; the contribution here is the experimental study and comparison, not a
-new clustering algorithm.
+**Final scope**: the final experiment, tables, and figures compare exactly
+**K-means++ vs. K-medoids**. Standard random-initialized K-means remains in
+`src/clustering.py` only to test shared clustering-correctness properties; it
+is excluded from `src/experiments.py:FINAL_METHODS` and from every final
+result. K-means++ is established prior work (Arthur & Vassilvitskii, 2007),
+not a new algorithm proposed by this project.
 
 ## Mathematical context
 
@@ -21,45 +22,62 @@ new clustering algorithm.
 Targets are partitioned `S = S_1 ⊔ ... ⊔ S_K`, one part per UAV, and after
 clustering the *same* interception-routing algorithm is applied to every
 method. The mission objective is the slowest UAV's completion time,
-`T_max = max_k T(S_k)`, reported as `max_route_time` (the primary metric,
-since interception time is implemented in this project — see below).
+`T_max = max_k T(S_k)`, reported as `max_route_time` (the primary metric).
 
-Full mathematical model (trajectory representation, distance, clustering
-methods, and the routing/interception model): **`docs/experiment_design.md`**.
+Full mathematical model: **`docs/experiment_design.md`** — trajectory
+representation, distance, both clustering methods, and the interception
+model, including the proof that every target is eventually interceptable
+whenever `V_uav >` target speed.
 
-> **Note on scope**: this repository started empty — no trajectory generator,
-> distance function, clustering code, or UAV routing model previously
-> existed. All of it, including the routing/interception model, was built for
-> this study and is fully documented in `docs/experiment_design.md` rather
-> than assumed or hidden.
+## 100% interception requirement
+
+A run is scientifically valid only if every assigned target is intercepted:
+`n_unreached == 0`, `n_intercepted == n_targets`, `capture_rate == 1.0`. This
+holds by construction here because `V_uav` exceeds the maximum target speed
+(see the interception proof in `docs/experiment_design.md`) and
+routing/interception is **not** capped by the clustering representation
+horizon (see below) — a UAV keeps flying until its assigned targets are all
+caught. Every run's `n_targets`/`n_intercepted`/`n_unreached`/`capture_rate`
+are recorded; any run with `capture_rate < 1.0` is written to
+`results/summary/invalid_runs.csv` with a reason and excluded from all final
+CSVs/tables/figures rather than silently dropped.
+
+## Trajectory representation vs. routing horizon
+
+`T_HORIZON` in `src/trajectories.py` is only the time span sampled to build
+the shared clustering feature vector (`feature_matrix`, `L=6` grid points).
+It is **not** a UAV routing deadline — `src/routing.py` takes an optional
+`t_horizon` cutoff that defaults to unbounded, so interception can and does
+continue past `T_HORIZON` when needed.
 
 ## Compared methods
 
-| Method | Initialization | Implementation |
+| Method (`method=`) | Initialization | Implementation |
 |---|---|---|
-| K-means (baseline) | random | `sklearn.cluster.KMeans(init="random", n_init=1)` |
-| K-means++ | k-means++ | `sklearn.cluster.KMeans(init="k-means++", n_init=1)` |
-| K-medoids | random medoids, alternating (PAM-style) updates | custom, `src/clustering.py`, on precomputed trajectory distances |
+| `kmeans_pp` (K-means++) | k-means++ | `sklearn.cluster.KMeans(init="k-means++", n_init=1)` |
+| `kmedoids` (K-medoids) | random medoids, alternating (Voronoi-iteration) updates | custom, `src/clustering.py`, on precomputed trajectory distances — **not** classic PAM BUILD+SWAP (documented in `docs/experiment_design.md`) |
 
-`n_init=1` for both K-means variants so a single initialization is evaluated
-per run — this isolates the effect of the initialization rule.
+Both receive the identical trajectory feature representation and distance
+(`src/distances.py`).
 
 ## Experiment design
 
-- Four scenario families (position/direction each random or clustered):
-  `random_random`, `clustered_position`, `clustered_direction`,
-  `clustered_position_direction`.
-- Fairness: for a given `(scenario_seed, clustering_seed)`, all three methods
-  see identical targets/trajectories, `K`, UAV speed/depot/time horizon, and
-  the same greedy routing procedure — only the clustering method differs.
-- Outlier-robustness experiment at outlier rates 0%, 1%, 5%, 10% (outlier
-  definition in `docs/experiment_design.md`).
-- Scaling experiment over `M` (number of targets) measuring clustering /
-  routing / total runtime.
-- All seeds are deterministic (`--base-seed`, default 42) and stored per
-  result row for reproducibility and paired comparisons.
-
-Details: `docs/experiment_design.md`.
+- Four scenario families: `random_random`, `clustered_position`,
+  `clustered_direction`, `clustered_position_direction` (the last uses one
+  latent per-target cluster label driving both position and direction —
+  documented in `docs/experiment_design.md`).
+- Fairness: identical targets/trajectories, `K`, UAV speed/depot, and routing
+  procedure across both methods for a given `(scenario_seed, clustering_seed)`.
+- Repeated clustering seeds (K-means++ and this K-medoids implementation are
+  both stochastic) are aggregated (mean) **within each scenario first**;
+  scientific summaries and paired comparisons are then computed over the
+  independent scenarios, not over scenario×seed rows.
+- Outlier-robustness at rates 0/1/5/10% (outlier definition: initial position
+  redrawn from a domain expanded 2x and re-centered — see
+  `docs/experiment_design.md`), with a central presentation result at
+  `M=2000, K=20, outlier_rate=1%`.
+- Scalability over `M in {100,...,2000}` at fixed `K=20`.
+- All seeds deterministic from `--base-seed` (default 42) and stored per row.
 
 ## Installation
 
@@ -79,43 +97,43 @@ python scripts/make_figures.py
 ## Full experiments
 
 ```bash
-python scripts/run_main_experiment.py            # default M=150, K=5, 30 scenarios x 10 seeds x 3 methods
-python scripts/run_outlier_experiment.py          # outlier rates 0/1/5/10%
-python scripts/run_scaling_experiment.py          # M in {200,500,1000,2000}
+python scripts/run_main_experiment.py            # M=150, K=5, 30 scenarios x 10 seeds
+python scripts/run_scaling_experiment.py          # K=20, M in {100..2000}
+python scripts/run_outlier_experiment.py          # M=2000, K=20, outlier rates 0/1/5/10%
 python scripts/make_figures.py
 ```
 
 Key CLI arguments (all scripts): `--M`, `--K`, `--n-scenarios`, `--n-seeds`,
 `--base-seed`, `--output`, `--quick`.
 
-The full-scale runs above are computationally heavier than `--quick`; check
-expected runtime on your machine before launching the full versions.
-
 ## Outputs
 
-- `results/raw/*.csv` — raw per-run metrics (one row per scenario x seed x
-  method); regenerable, see `.gitignore`.
-- `results/summary/stats_summary.csv` — mean/median/std/min/max + 95% CI per
-  `(scenario_type, method)` for the primary metric and runtime.
-- `results/summary/paired_differences.csv` — paired differences
-  (K-means++ − K-means, K-means++ − K-medoids) on the primary metric, matched
-  by `scenario_id` + `clustering_seed`.
-- `results/summary/presentation_table.csv` — one row per method, generated
-  from raw data only.
-- `results/figures/main_routing_comparison.{png,pdf}`,
-  `outlier_robustness.{png,pdf}`, `runtime_scaling.{png,pdf}`.
+- `results/raw/main_results.csv`, `scalability_results.csv`,
+  `outlier_results.csv` — raw per-run metrics, valid runs only.
+- `results/summary/invalid_runs.csv` — any run with `capture_rate < 1.0`
+  (should not occur; present only to surface a model problem, never silently
+  discarded).
+- `results/summary/main_summary.csv`, `scalability_summary.csv` —
+  scenario-level mean/median/std/min/max/95% CI.
+- `results/summary/paired_comparisons.csv` — per-scenario paired differences
+  (K-means++ − K-medoids).
+- `results/summary/outlier_1pct_table.csv` +
+  `results/figures/outlier_1pct_table.{png,pdf}` — the Ukrainian presentation
+  table (`Вплив 1% викидів (M = 2000, K = 20)`).
+- `results/figures/scalability_K20.{png,pdf}` — Ukrainian scalability graph
+  (`Масштабованість алгоритмів (K = 20 БПЛА)`, log-log, `clustering_time`).
+- `results/figures/outlier_robustness.{png,pdf}` — Ukrainian robustness graph.
+
+Code, docs, and CSV column names are English; only presentation-visible text
+(figure titles, axis labels, legends, the outlier table) is Ukrainian.
 
 ## Reproducibility
 
-- All scenario and clustering seeds are derived deterministically from
-  `--base-seed` (default 42) via `numpy.random.default_rng` and stored in
-  every result row.
-- Every number in every figure/table is computed from `results/raw/*.csv`;
-  nothing is hand-typed. Regenerate summaries/figures at any time with
-  `python scripts/make_figures.py`.
-- `results/raw/*.csv` is excluded from version control (regenerable, and
-  full-scale runs can be large); `results/summary/` and `results/figures/`
-  from a `--quick` validation run are committed as a working example.
+Every number in every table/figure is computed from `results/raw/*.csv`;
+nothing is hand-typed. Regenerate at any time with
+`python scripts/make_figures.py`. All scenario/clustering seeds derive
+deterministically from `--base-seed` via `numpy.random.default_rng` and are
+stored in every result row.
 
 ## Tests
 
@@ -125,20 +143,20 @@ python -m pytest tests/
 
 Covers: distance symmetry/self-zero, every target assigned exactly once,
 exactly K clusters/representatives, K-medoids representatives are real input
-points, end-to-end reproducibility under identical seeds, and result-row
-schema.
+points, an analytical interception-time check, routing continuing past the
+clustering representation horizon, 100% capture under `V_uav >` target speed,
+end-to-end reproducibility, and result-row schema.
 
 ## Citation / references
 
 - Arthur, D. and Vassilvitskii, S. (2007). *k-means++: The Advantages of
   Careful Seeding.* SODA.
-- Kaufman, L. and Rousseeuw, P.J. (1990). *Finding Groups in Data: An
-  Introduction to Cluster Analysis* (PAM algorithm).
-- Pedregosa et al. (2011). *Scikit-learn: Machine Learning in Python.* JMLR.
+- Kaufman, L. and Rousseeuw, P.J. (1990). *Finding Groups in Data* (PAM).
+- Pedregosa et al. (2011). *Scikit-learn.* JMLR.
 
 ## Status
 
-**Preliminary.** This repository provides the experimental framework and a
-small `--quick` validation run. Statistically meaningful conclusions require
-running the full-scale experiments (`--quick` omitted) and are not yet
-included.
+**Preliminary.** This repository provides the experimental framework and
+validated small/medium runs. No conclusion about which method performs
+better is stated here; that is a separate interpretation step over the
+generated results.

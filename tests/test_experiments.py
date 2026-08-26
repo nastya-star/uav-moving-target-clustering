@@ -18,3 +18,11 @@ def test_reproducible_end_to_end():
     row2 = run_one("clustered_position", scenario_seed=5, clustering_seed=9, M=15, K=3, method="kmedoids")
     assert row1["max_route_time"] == row2["max_route_time"]
     assert row1["cluster_sizes"] == row2["cluster_sizes"]
+
+
+def test_full_capture_rate_for_final_methods():
+    for method in ("kmeans_pp", "kmedoids"):
+        row = run_one("random_random", scenario_seed=2, clustering_seed=3, M=20, K=4, method=method)
+        assert row["n_unreached"] == 0
+        assert row["n_intercepted"] == row["n_targets"] == 20
+        assert row["capture_rate"] == 1.0

@@ -12,10 +12,14 @@ no such model previously existed in the repository.
 
 ## Research question
 
-Does K-means++ initialization improve the decomposition and final UAV routing
-quality compared with standard K-means (random init) and K-medoids, when used as
-the target-clustering stage of a two-level UAV routing algorithm for moving-target
-interception?
+How does K-means with K-means++ initialization compare with K-medoids when
+trajectory clustering is used as the decomposition stage of UAV routing for
+interception of moving targets?
+
+**Final scope**: the final experiment, tables, and figures compare exactly
+K-means++ vs. K-medoids. Standard random-initialized K-means is kept in
+`src/clustering.py` only to test shared clustering-correctness properties
+(see `tests/`); it is not part of any final result.
 
 ## Trajectory model
 
@@ -59,30 +63,47 @@ model differs (mean-in-feature-space vs. an actual medoid trajectory).
 
 ## Clustering methods
 
-1. **K-means (baseline)**: `sklearn.cluster.KMeans(n_clusters=K, init="random", n_init=1, random_state=seed)`.
-2. **K-means++**: identical call with `init="k-means++"`.
-   `n_init=1` for both so a single initialization is evaluated — this isolates the
+**The final experiment compares exactly two methods: K-means++ vs. K-medoids.**
+Standard random-initialized K-means (`src/clustering.py:run_kmeans(init="random")`)
+remains in the codebase only for unit-testing shared clustering-correctness
+properties (every target assigned once, K clusters, reproducibility); it is
+excluded from `src/experiments.py:FINAL_METHODS` and therefore from every
+final result CSV, table, and figure.
+
+1. **K-means++** (`method="kmeans_pp"`): K-means clustering using k-means++
+   initialization — this is the well-established Arthur & Vassilvitskii (2007)
+   seeding rule, not a new algorithm proposed by this project:
+   ```python
+   KMeans(n_clusters=K, init="k-means++", n_init=1, random_state=seed)
+   ```
+   `n_init=1` so a single initialization is evaluated per run, isolating the
    effect of the initialization rule itself rather than averaging over restarts.
-3. **K-medoids**: a compact "alternating" (Voronoi-iteration) PAM-style algorithm
-   implemented in `src/clustering.py` against the precomputed distance matrix `D`:
-   random medoid seeding (from `clustering_seed`) → assign each point to its
-   nearest medoid → replace each medoid by the cluster member minimizing total
-   in-cluster distance → repeat to convergence. Medoids are always actual input
-   trajectories. The classic PAM BUILD+SWAP search is not used because its
-   `O(K (M-K)^2)` per-iteration cost is impractical at `M` up to 2000 in the
-   scaling experiment; the alternating variant is the standard, correct,
-   scalable substitute and is documented here for transparency.
+2. **K-medoids** (`method="kmedoids"`): a compact **alternating (Voronoi-iteration)
+   k-medoids** algorithm implemented in `src/clustering.py:run_kmedoids` against
+   the precomputed distance matrix `D`: random medoid seeding (from
+   `clustering_seed`) → assign each point to its nearest medoid → replace each
+   medoid by the cluster member minimizing total in-cluster distance → repeat
+   to convergence. Medoids are always actual input trajectories.
+   **This is explicitly not the classic PAM BUILD+SWAP algorithm** — that
+   search is `O(K (M-K)^2)` per iteration, impractical at `M` up to 2000 in the
+   scaling experiment. The alternating variant is the standard, correct,
+   scalable substitute for PAM and is named precisely here to avoid confusion.
 
 ## Two-level routing / interception model (newly built — none existed)
 
 All UAVs launch from a common depot at time `t=0`. All `K` UAVs share the same
-constant speed `V_uav`, set above the maximum target speed so interception is
-generally feasible. Defaults (`src/trajectories.py`): domain `100x100`, depot
-at the domain center, `T_HORIZON = 20`, `V_uav = 8`, target speed in `[1, 3]`
-— chosen so that the reachable radius `V_uav * T_HORIZON` comfortably covers
-the domain diagonal from the central depot; `n_unreached` in the results
-confirms how many targets, if any, fall outside the feasible envelope for a
-given run.
+constant speed `V_uav`, set above the maximum target speed (`V_uav = 8` vs.
+target speed in `[1, 3]`, `src/trajectories.py`) so interception is always
+eventually feasible (see the "100% interception" note below).
+
+**`T_HORIZON` (the trajectory-representation horizon used to build the
+clustering feature grid, `feature_matrix()`) is separate from and is NOT a
+deadline for routing/interception.** `src/routing.py:intercept_time` and
+`route_cluster` take an optional `t_horizon` cutoff that defaults to `None`
+(unbounded): a UAV keeps flying until every target assigned to it has been
+intercepted, it is never stopped merely because the clustering representation
+horizon has elapsed. `src/experiments.py:run_one` always calls routing with
+`t_horizon=None`.
 
 Given a UAV at position `p` and time `t`, and a target with trajectory
 `z(s) = p_0 + v*s`, the earliest interception time `t* >= t` solves
@@ -99,6 +120,19 @@ which, writing `s = t* - t` and `d0 = p_0 + v*t - p`, is the quadratic
 
 solved in closed form for the smallest non-negative root with `t* <= T`; if no
 such root exists the target is marked unreachable from that state.
+
+**100% interception guarantee**: writing `s = t*-uav_time`, the quadratic
+`(v.v - V_uav^2) s^2 + 2(d0.v) s + d0.d0 = 0` has leading coefficient
+`a = v.v - V_uav^2 < 0` whenever `V_uav > |v|` (true here since `V_uav=8 >
+V_TARGET_MAX=3`). Its value at `s=0` is `c = d0.d0 >= 0` and it tends to `-inf`
+as `s -> inf`, so by the intermediate value theorem a non-negative root
+always exists: every target is always eventually interceptable, independent
+of the clustering method. `src/experiments.py:run_one` records
+`n_targets`/`n_intercepted`/`n_unreached`/`capture_rate` per run;
+`split_valid_invalid` routes any run with `capture_rate < 1.0` to
+`results/summary/invalid_runs.csv` instead of the final result CSVs — such a
+run should not occur under the stated speed condition, and its presence
+signals a parameter/model problem to investigate, not a result to publish.
 
 **Within-cluster routing**: targets assigned to a UAV are visited using a greedy
 nearest-interception-time heuristic (at each step, intercept whichever remaining
@@ -140,7 +174,12 @@ All four families are supported by the generator in `src/trajectories.py`:
 - `random_random`: initial positions uniform over the domain; velocity directions uniform random.
 - `clustered_position`: initial positions drawn from `K` Gaussian blobs; velocity directions uniform random.
 - `clustered_direction`: initial positions uniform; velocity headings drawn from `K` preferred directions plus angular noise.
-- `clustered_position_direction`: both position and direction clustered.
+- `clustered_position_direction`: both position and direction clustered, driven
+  by a **single latent cluster label** `c_i in {1,...,K}` per target (drawn
+  once in `generate_scenario`), used for both that target's position-cluster
+  center and its direction-cluster heading. Position and direction cluster
+  membership are NOT drawn independently — doing so would create up to `K^2`
+  artificial position x direction combinations with no coherent structure.
 
 ## Fairness
 
