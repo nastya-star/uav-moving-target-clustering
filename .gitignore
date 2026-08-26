@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+.venv/
+env/
+.env
+.pytest_cache/
+*.egg-info/
+.vscode/
+.idea/
+.DS_Store
+
+# Large/regenerable raw experiment output (see README for how to regenerate)
+results/raw/*.csv
+!results/raw/.gitkeep
