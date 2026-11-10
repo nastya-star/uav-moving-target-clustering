@@ -1,0 +1,40 @@
+GLPSOL--GLPK LP/MIP Solver 5.0
+Parameter(s) specified in the command line:
+ -m /home/user/uav-moving-target-clustering/research_nutrition/data/stigler.mod
+Reading model section from /home/user/uav-moving-target-clustering/research_nutrition/data/stigler.mod...
+Reading data section from /home/user/uav-moving-target-clustering/research_nutrition/data/stigler.mod...
+411 lines were read
+Checking (line 99)...
+Generating nb...
+Generating cost...
+Model has been successfully generated
+GLPK Simplex Optimizer 5.0
+10 rows, 77 columns, 647 non-zeros
+Preprocessing...
+9 rows, 77 columns, 570 non-zeros
+Scaling...
+ A: min|aij| =  1.000e-01  max|aij| =  5.369e+03  ratio =  5.369e+04
+GM: min|aij| =  4.896e-02  max|aij| =  2.043e+01  ratio =  4.172e+02
+EQ: min|aij| =  2.397e-03  max|aij| =  1.000e+00  ratio =  4.172e+02
+Constructing initial basis...
+Size of triangular part is 9
+      0: obj =   0.000000000e+00 inf =   6.205e+00 (9)
+      9: obj =   1.363813591e+00 inf =   0.000e+00 (0)
+*    25: obj =   1.086622782e-01 inf =   0.000e+00 (0)
+OPTIMAL LP SOLUTION FOUND
+Time used:   0.0 secs
+Memory used: 0.5 Mb (490744 bytes)
+
+MINIMUM COST ANNUAL DIET
+
+        Commodity            Unit     Quantity     Cost   
+------------------------- ---------- ---------- ----------
+Wheat Flour (Enriched)        10 lb.      29.95   $  10.78
+Liver (Beef)                   1 lb.       2.58   $   0.69
+Cabbage                        1 lb.     110.70   $   4.10
+Spinach                        1 lb.      22.58   $   1.83
+Navy Beans, Dried              1 lb.     377.81   $  22.29
+                                         -----------------
+                                         Total:   $  39.69
+
+Model has been successfully processed

@@ -1,0 +1,31 @@
+parameter,value
+octave_version,8.4.0
+glpk_library_version,5.0
+glpk_oct_file,/usr/lib/x86_64-linux-gnu/octave/8.4.0/oct/x86_64-pc-linux-gnu/__glpk__.oct
+glpk_shared_library,libglpk.so.40 => /lib/x86_64-linux-gnu/libglpk.so.40 (0x00007fdf4a629000)
+packages,glpk-utils 5.0-1build2; libglpk40 5.0-1build2; octave 8.4.0-1build5;
+glpsol,GLPSOL--GLPK LP/MIP Solver 5.0
+os,Ubuntu 24.04.5 LTS
+host,x86_64-pc-linux-gnu
+run_date,2026-11-10 00:29:09
+sha256,b0930f90e9b9ddee6f4aacea7a9d64aad6a5e1b3ec19eadc65d5cba75d493a93  /home/user/uav-moving-target-clustering/research_nutrition/data/stigler.mod
+848614a4f1fc4408bac0a37b6c8872e6a36c712226f5d7c69e56f78d0790b104  /home/user/uav-moving-target-clustering/research_nutrition/data/stigler1944.csv
+glpk.msglev,1
+glpk.lpsolver,1
+glpk.dual,1
+glpk.presol,0
+glpk.scale,16
+glpk.price,34
+glpk.rtest,34
+glpk.tolbnd,1.0000000000000001e-09
+glpk.toldj,1.0000000000000001e-09
+glpk.tolpiv,1e-10
+glpk.itlim,100000
+tol_feas,1.0000000000000001e-09
+tol_gap,9.9999999999999998e-13
+tol_comp,9.9999999999999998e-13
+tol_support,1.0000000000000001e-09
+tol_active,1.0000000000000001e-09
+lb_gram,453.60000000000002
+md_budget_base,0.79671475000000003
+md_budget_eps,9.9999999999999995e-08

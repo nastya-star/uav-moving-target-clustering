@@ -1,0 +1,13 @@
+year,id,name,quantity,quantity_unit,cost_dollars
+1939,1,Wheat flour,370,lb,13.33
+1939,15,Evaporated milk,57,can,3.84
+1939,46,Cabbage,111,lb,4.11
+1939,52,Spinach,23,lb,1.85
+1939,69,Navy beans,285,lb,16.80
+1939,total,,,,39.93
+1944,1,Wheat flour,535,lb,34.53
+1944,46,Cabbage,107,lb,5.23
+1944,52,Spinach,13,lb,1.56
+1944,78,Pancake flour,134,lb,13.08
+1944,80,Pork liver,25,lb,5.48
+1944,total,,,,59.88

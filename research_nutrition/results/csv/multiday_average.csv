@@ -1,0 +1,19 @@
+nutrient,quantity,average_lower_bound,average_intake,cost,cost_minus_base_cost,multiplier,note
+iron,mean_in_joint_solution,,62.039142467305489,,,,
+iron,mean_in_daily_optima,,62.039142467305545,,,,
+iron,min_mean_on_exact_optimal_face,,62.039142467306014,0.7967147509315271,,,
+iron,max_mean_on_exact_optimal_face,,62.039142467305496,0.7967147509315271,,,
+iron,max_mean_with_cost_tolerance,,62.039167106450904,0.79671484999999942,9.9068472314556288e-08,248.70824086159004,budget 0.79671484999999997
+iron,exact_mean_in_unique_daily_optima,,62.039142467305531,,,,"rational value, printed as double"
+iron,lower_bound_case_1,12,62.039142467305545,0.79671475093152822,1.1102230246251565e-15,0,exact sign(mean - bound) = 1
+iron,lower_bound_case_2,62.039140000000003,62.039142467305524,0.79671475093152777,6.6613381477509392e-16,0,exact sign(mean - bound) = 1
+iron,lower_bound_case_3,65.141130000000004,65.141130000000004,0.80918714638552702,0.012472395453999918,0.0040207754939511186,exact sign(mean - bound) = -1
+protein,mean_in_joint_solution,,158.66131255655699,,,,
+protein,mean_in_daily_optima,,158.66131255655688,,,,
+protein,min_mean_on_exact_optimal_face,,158.66131255655716,0.7967147509315271,,,
+protein,max_mean_on_exact_optimal_face,,158.66131255655682,0.7967147509315271,,,
+protein,max_mean_with_cost_tolerance,,158.66135444560121,0.79671484999999986,9.9068472758645498e-08,422.82921348314869,budget 0.79671484999999997
+protein,exact_mean_in_unique_daily_optima,,158.66131255655688,,,,"rational value, printed as double"
+protein,lower_bound_case_1,74.900000000000006,158.66131255655759,0.79671475093152988,2.7755575615628914e-15,0,exact sign(mean - bound) = 1
+protein,lower_bound_case_2,158.66130999999999,158.66131255655685,0.79671475093152722,1.1102230246251565e-16,0,exact sign(mean - bound) = 1
+protein,lower_bound_case_3,166.59399999999999,166.59400000000002,0.81547572389764733,0.018760972966120226,0.002365021072603485,exact sign(mean - bound) = -1
